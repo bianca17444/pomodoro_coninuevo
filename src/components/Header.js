@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
   },
   tab: {
     padding: 8,
-    borderRadius: 8,
+    borderRadius: 999,
     borderWidth: 2,
     width: "32%",
     alignItems: "center",

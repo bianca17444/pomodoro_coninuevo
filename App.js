@@ -7,10 +7,20 @@ import {
   Platform,
 } from "react-native";
 import { Audio } from "expo-av";
+import * as Notifications from "expo-notifications";
 import { options } from "./src/constants/theme";
 import Header from "./src/components/Header";
 import Timer from "./src/components/Timer";
 import Actions from "./src/components/Actions";
+
+// handler notificaciones
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function App() {
   const [time, setTime] = useState(options[0].time);
@@ -19,6 +29,11 @@ export default function App() {
 
   const [clickSound, setClickSound] = useState(null);
   const [alarmSound, setAlarmSound] = useState(null);
+
+  // permisos notificaciones
+  useEffect(() => {
+    Notifications.requestPermissionsAsync();
+  }, []);
 
   // 🔊 Inicializar audio
   useEffect(() => {
@@ -72,8 +87,32 @@ export default function App() {
     }
 
     if (time === 0 && isActive) {
-      alarmSound?.replayAsync();
-      Vibration.vibrate([500, 1000, 500]);
+      Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Pomodoro terminado ⏰",
+          body: "Tu tiempo terminó.",
+        },
+        trigger: null,
+      });
+
+      const playAlarm = async () => {
+        try {
+          await alarmSound?.replayAsync();
+
+          // vibración continua
+          Vibration.vibrate([500, 1000, 500], true);
+
+          // detener sonido y vibración luego de 30 segundos
+          setTimeout(async () => {
+            await alarmSound?.stopAsync();
+            Vibration.cancel();
+          }, 30000);
+        } catch (error) {
+          console.log("error alarma:", error);
+        }
+      };
+
+      playAlarm();
       setIsActive(false);
     }
 
@@ -93,7 +132,14 @@ export default function App() {
     clickSound?.replayAsync();
     setIsActive(!isActive);
   };
-
+  const handleStopAlarm = async () => {
+  try {
+    await alarmSound?.stopAsync();
+    Vibration.cancel();
+  } catch (error) {
+    console.log("error detener alarma:", error);
+  }
+  };
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: currentOption.bg }]}
@@ -111,6 +157,7 @@ export default function App() {
         <Actions
           isActive={isActive}
           onStartStop={handleToggle}
+          onStopAlarm={handleStopAlarm}
           detailColor={currentOption.detail}
           bgColor={currentOption.bg}
         />
